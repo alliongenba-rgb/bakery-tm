@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="T&Mベーカリー">
+<meta name="theme-color" content="#ff6b35">
+<title>ベーカリーハウスT&M</title>
+<link rel="icon" href="logo.jpg" type="image/jpeg">
+<link rel="apple-touch-icon" href="logo.jpg">
+<!-- Firebase compat SDK 9.23.0 -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --grad1:#ff6b35;--grad2:#ff3d7f;
+  --green:#1a5c2e;--green-light:#4ade80;
+  --cream:#fdf8f0;--text:#1a1a1a;--gray:#6b7280;--border:#e5e7eb;
+  --pink:#ff3d7f;--orange:#ff6b35;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--cream);color:var(--text);max-width:480px;margin:0 auto;min-height:100vh;}
+
+/* HEADER */
+.header{background:#fff;padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+.header-logo{width:42px;height:42px;border-radius:50%;object-fit:cover;flex-shrink:0;}
+.header-info{flex:1;}
+.header-name{font-size:15px;font-weight:700;background:linear-gradient(90deg,var(--orange),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.header-sub{font-size:10px;color:var(--gray);}
+.stock-badge{background:linear-gradient(135deg,var(--orange),var(--pink));color:#fff;border:none;border-radius:20px;padding:6px 12px;font-size:12px;font-weight:700;white-space:nowrap;}
+
+/* TABS */
+.tabs{display:flex;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:62px;z-index:99;}
+.tab{flex:1;padding:11px 4px;text-align:center;font-size:12px;font-weight:500;color:var(--gray);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;transition:all .2s;}
+.tab.active{color:var(--pink);border-bottom-color:var(--pink);font-weight:700;}
+
+/* SECTIONS */
+.section{display:none;}.section.active{display:block;}
+
+/* ===== バナー（banner.jpgを単一画像として表示） ===== */
+.banner{width:100%;overflow:hidden;}
+.banner img{width:100%;height:auto;display:block;}
+
+/* DM作成 */
+.product-select-label{padding:10px 14px 6px;font-size:13px;font-weight:700;}
+.product-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);}
+.pgi{background:#fff;padding:10px;cursor:pointer;position:relative;transition:background .15s;}
+.pgi.sel{background:#fff5f8;}
+.pgi .ck{position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:50%;border:2px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;}
+.pgi.sel .ck{background:var(--pink);border-color:var(--pink);color:#fff;}
+.pgi-img{width:100%;aspect-ratio:4/3;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:6px;overflow:hidden;}
+.pgi-img img{width:100%;height:100%;object-fit:cover;}
+.pgi-name{font-size:13px;font-weight:600;margin-bottom:2px;}
+.pgi-info{display:flex;justify-content:space-between;align-items:center;}
+.pgi-stock{font-size:11px;color:var(--gray);}
+.pgi-price{font-size:13px;font-weight:700;color:var(--pink);}
+
+/* 割引後価格プレビュー */
+.price-preview{background:#fff8f0;border:1.5px solid var(--orange);border-radius:10px;padding:10px 14px;margin:10px 14px;display:none;}
+.price-preview-title{font-size:11px;color:var(--gray);margin-bottom:6px;font-weight:600;}
+.price-preview-list{display:flex;flex-direction:column;gap:4px;}
+.price-preview-row{font-size:13px;display:flex;align-items:center;gap:6px;}
+.price-original{color:var(--gray);text-decoration:line-through;font-size:12px;}
+.price-arrow{color:var(--orange);}
+.price-discounted{color:var(--pink);font-weight:700;}
+
+.dm-bottom{padding:12px 14px;background:#fff;border-top:1px solid var(--border);}
+.discount-row{display:flex;gap:6px;margin-bottom:10px;}
+.disc-btn{flex:1;padding:9px 4px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;text-align:center;transition:all .2s;}
+.disc-btn.active{border-color:var(--pink);background:linear-gradient(135deg,var(--orange),var(--pink));color:#fff;}
+.dm-msg{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px;font-size:13px;font-family:inherit;resize:none;outline:none;margin-bottom:10px;}
+.send-btn{width:100%;padding:13px;background:linear-gradient(135deg,var(--orange),var(--pink));color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;}
+.send-btn:active{opacity:.85;}
+
+/* 商品タブ */
+.products-header{padding:10px 14px;font-size:13px;font-weight:700;color:var(--gray);}
+.product-edit-list{padding:0 14px;display:flex;flex-direction:column;gap:10px;padding-bottom:20px;}
+.pec{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.07);display:flex;align-items:center;gap:10px;padding:10px;}
+.pe-thumb{width:60px;height:60px;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;overflow:hidden;cursor:pointer;}
+.pe-thumb img{width:100%;height:100%;object-fit:cover;}
+.pe-body{flex:1;}
+.pe-name{font-size:14px;font-weight:700;margin-bottom:6px;}
+.pe-inputs{display:flex;gap:6px;}
+.pe-input{flex:1;border:1.5px solid var(--border);border-radius:6px;padding:6px 8px;font-size:13px;outline:none;}
+.pe-input:focus{border-color:var(--pink);}
+.pe-del{background:none;border:none;color:#d1d5db;font-size:20px;cursor:pointer;padding:4px;flex-shrink:0;}
+.add-btn-full{width:100%;padding:12px;background:linear-gradient(135deg,var(--orange),var(--pink));color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;}
+
+/* 会員タブ */
+.member-section{padding:14px;}
+.qr-card{background:#fff;border-radius:14px;padding:20px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.07);}
+.qr-card-title{font-size:15px;font-weight:700;margin-bottom:6px;}
+.qr-card-sub{font-size:12px;color:var(--gray);margin-bottom:16px;line-height:1.7;}
+.qr-wrap{display:flex;justify-content:center;}
+.qr-wrap canvas{border-radius:8px;border:1px solid var(--border);}
+.qr-note{font-size:11px;color:var(--gray);margin-top:12px;line-height:1.6;}
+
+/* 履歴タブ */
+.history-section{padding:14px;}
+.ops-card{background:#fff;border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.07);}
+.ops-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.ops-label{font-size:13px;font-weight:700;flex:1;}
+.ops-time{font-size:12px;color:var(--gray);}
+.ops-btn{padding:8px 16px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;color:#fff;}
+.ops-start{background:var(--green);}
+.ops-end{background:var(--pink);}
+.weather-row{display:flex;gap:6px;margin-top:6px;}
+.weather-btn{flex:1;padding:8px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-size:18px;cursor:pointer;text-align:center;transition:all .2s;}
+.weather-btn.active{border-color:var(--orange);background:#fff8f0;}
+.stats-card{background:#fff;border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.07);}
+.stats-title{font-size:13px;font-weight:700;color:var(--gray);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.stat-box{background:var(--cream);border-radius:8px;padding:10px;text-align:center;}
+.stat-val{font-size:20px;font-weight:700;background:linear-gradient(135deg,var(--orange),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.stat-lbl{font-size:10px;color:var(--gray);margin-top:2px;}
+.product-sales-list{display:flex;flex-direction:column;gap:6px;}
+.ps-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);}
+.ps-row:last-child{border-bottom:none;}
+.ps-thumb{width:36px;height:36px;border-radius:6px;object-fit:cover;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:16px;overflow:hidden;flex-shrink:0;}
+.ps-thumb img{width:100%;height:100%;object-fit:cover;}
+.ps-name{flex:1;font-size:13px;font-weight:600;}
+.ps-nums{text-align:right;}
+.ps-count{font-size:12px;color:var(--gray);}
+.ps-amount{font-size:13px;font-weight:700;color:var(--pink);}
+.time-sales-list{display:flex;flex-direction:column;gap:4px;}
+.ts-row{display:flex;align-items:center;gap:8px;}
+.ts-hour{font-size:11px;color:var(--gray);width:36px;flex-shrink:0;}
+.ts-bar-wrap{flex:1;background:#f3f4f6;border-radius:4px;height:18px;overflow:hidden;}
+.ts-bar{height:100%;background:linear-gradient(90deg,var(--orange),var(--pink));border-radius:4px;min-width:4px;transition:width .3s;}
+.ts-val{font-size:11px;color:var(--gray);width:50px;text-align:right;flex-shrink:0;}
+.week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.week-day{text-align:center;}
+.week-day-label{font-size:10px;color:var(--gray);margin-bottom:4px;}
+.week-bar-wrap{background:#f3f4f6;border-radius:4px;height:50px;display:flex;align-items:flex-end;overflow:hidden;}
+.week-bar{width:100%;background:linear-gradient(0deg,var(--orange),var(--pink));border-radius:4px;transition:height .3s;}
+.week-amount{font-size:9px;color:var(--gray);margin-top:3px;text-align:center;}
+.history-list{display:flex;flex-direction:column;gap:8px;}
+.history-item{background:#fff;border-radius:12px;padding:12px;box-shadow:0 1px 4px rgba(0,0,0,.07);}
+.hi-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.hi-date{font-size:12px;color:var(--gray);}
+.hi-badge{background:linear-gradient(135deg,var(--orange),var(--pink));color:#fff;border-radius:10px;padding:2px 10px;font-size:11px;font-weight:700;}
+.hi-weather{font-size:16px;margin-left:6px;}
+.hi-thumbs{display:flex;gap:4px;margin-bottom:6px;}
+.hi-thumb{width:48px;height:48px;border-radius:6px;object-fit:cover;background:#f3f4f6;}
+.hi-info{font-size:12px;color:var(--gray);}
+.export-row{display:flex;gap:8px;margin-bottom:12px;}
+.export-btn{flex:1;padding:9px;border:1.5px solid var(--border);border-radius:8px;background:#fff;font-size:12px;font-weight:700;cursor:pointer;}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:flex-end;}
+.modal-overlay.open{display:flex;}
+.modal{background:#fff;border-radius:20px 20px 0 0;padding:20px 20px 40px;width:100%;max-height:85vh;overflow-y:auto;}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:16px;text-align:center;}
+.modal-input{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px;font-size:14px;font-family:inherit;outline:none;margin-bottom:12px;}
+.modal-input:focus{border-color:var(--pink);}
+.modal-photo-btn{width:100%;height:72px;border:2px dashed #d1d5db;border-radius:8px;background:#fafafa;display:flex;align-items:center;justify-content:center;cursor:pointer;gap:8px;font-size:13px;color:var(--gray);margin-bottom:12px;}
+.modal-photo-prev{width:100%;height:100px;object-fit:cover;border-radius:8px;margin-bottom:12px;display:none;}
+.modal-btn{width:100%;padding:13px;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px;}
+.mbp{background:linear-gradient(135deg,var(--orange),var(--pink));color:#fff;}
+.mbs{background:#f3f4f6;color:var(--text);}
+.ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
+.ov.show{display:flex;}
+.spinner{width:50px;height:50px;border:4px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;}
+.ov-text{color:#fff;font-size:16px;font-weight:700;}
+.ov-icon{font-size:66px;animation:pop .4s ease-out;}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes pop{from{transform:scale(.4);opacity:0;}to{transform:scale(1);opacity:1;}}
+.empty-state{text-align:center;padding:30px 20px;color:var(--gray);font-size:13px;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <img class="header-logo" src="logo.jpg" alt="ロゴ">
+  <div class="header-info">
+    <div class="header-name">ベーカリーハウスT&M</div>
+    <div class="header-sub">フードロス削減 × LINE通知システム</div>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+    <button class="stock-badge" id="stockBadge">本日 0個残り</button>
+    <span id="syncBadge" style="font-size:10px;color:var(--gray)">☁️ 同期中...</span>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="showTab('dm')" id="tab-dm">📋 DM作成</div>
+  <div class="tab" onclick="showTab('products')" id="tab-products">🥖 商品</div>
+  <div class="tab" onclick="showTab('member')" id="tab-member">👥 会員</div>
+  <div class="tab" onclick="showTab('history')" id="tab-history">📊 履歴</div>
+</div>
+
+<!-- ===== DM作成 ===== -->
+<div class="section active" id="sec-dm">
+  <!-- バナー（banner.jpgを単一画像として表示） -->
+  <div class="banner">
+    <img src="banner.jpg" alt="フードロス削減 ベーカリーハウスT&Mの取り組み">
+  </div>
+
+  <div class="product-select-label">フードロス対象パンを選択</div>
+  <div class="product-grid" id="dmGrid"><div class="empty-state" style="grid-column:1/-1">商品タブで商品を追加してください</div></div>
+
+  <div class="price-preview" id="pricePreview">
+    <div class="price-preview-title">💰 割引後価格（自動計算）</div>
+    <div class="price-preview-list" id="pricePreviewList"></div>
+  </div>
+
+  <div class="dm-bottom">
+    <div class="discount-row">
+      <button class="disc-btn" onclick="selDisc(this,'20')">20%<br><small style="font-size:10px;font-weight:400">OFF</small></button>
+      <button class="disc-btn" onclick="selDisc(this,'30')">30%<br><small style="font-size:10px;font-weight:400">OFF</small></button>
+      <button class="disc-btn" onclick="selDisc(this,'40')">40%<br><small style="font-size:10px;font-weight:400">OFF</small></button>
+      <button class="disc-btn" onclick="selDisc(this,'50')">50%<br><small style="font-size:10px;font-weight:400">OFF</small></button>
+    </div>
+    <textarea class="dm-msg" id="dmMsg" rows="2" placeholder="例：本日17時まで！お早めにどうぞ🍞"></textarea>
+    <button class="send-btn" id="btnSendDM" onclick="sendDM()">▶ 開始（値引き販売をLINEで告知） <span id="sendLbl" style="font-size:12px;opacity:.9"></span></button>
+  </div>
+</div>
+
+<!-- ===== 商品タブ ===== -->
+<div class="section" id="sec-products">
+  <div class="products-header">フードロス対象商品</div>
+  <div class="product-edit-list" id="peList"><div class="empty-state">商品を追加してください</div></div>
+  <div style="padding:0 14px 24px"><button class="add-btn-full" onclick="openAddProduct()">＋ 商品を追加</button></div>
+</div>
+
+<!-- ===== 会員タブ ===== -->
+<div class="section" id="sec-member">
+  <div class="member-section">
+    <div class="qr-card">
+      <div class="qr-card-title">🟩 会員登録用QRコード</div>
+      <div class="qr-card-sub">レジ横に印刷して設置してください<br>お客様がQRを読むとLINE公式に友だち追加されます</div>
+      <div class="qr-wrap" id="qrWrap">
+        <div style="width:180px;height:180px;background:#f3f4f6;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--gray);font-size:12px;text-align:center;padding:16px">LINE URLを<br>設定してください</div>
+      </div>
+      <div class="qr-note">※LINE URLを設定するとQRコードが生成されます<br>会員管理はLINE公式アカウントで行います</div>
+      <div style="margin-top:14px">
+        <input type="text" class="modal-input" id="lineUrlSetting" placeholder="LINE公式URL (https://lin.ee/xxxxx)" style="margin-bottom:8px">
+        <button class="add-btn-full" onclick="applyLineUrl()">QRコードを生成・保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 履歴タブ ===== -->
+<div class="section" id="sec-history">
+  <div class="history-section">
+    <div class="ops-card">
+      <div style="font-size:12px;color:var(--gray);margin-bottom:8px">🌤 今日の天気</div>
+      <div class="weather-row">
+        <button class="weather-btn" onclick="setWeather(this,'☀️')" data-w="☀️">☀️</button>
+        <button class="weather-btn" onclick="setWeather(this,'⛅')" data-w="⛅">⛅</button>
+        <button class="weather-btn" onclick="setWeather(this,'☁️')" data-w="☁️">☁️</button>
+        <button class="weather-btn" onclick="setWeather(this,'🌧️')" data-w="🌧️">🌧️</button>
+        <button class="weather-btn" onclick="setWeather(this,'❄️')" data-w="❄️">❄️</button>
+      </div>
+    </div>
+    <div class="stats-card">
+      <div class="stats-title">
+        <span>📊 本日の集計</span>
+        <div class="export-row" style="margin:0;gap:6px">
+          <button class="export-btn" style="padding:4px 10px;font-size:11px" onclick="exportCSV('day')">CSV</button>
+          <button class="export-btn" style="padding:4px 10px;font-size:11px" onclick="exportCSV('week')">週CSV</button>
+        </div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-box"><div class="stat-val" id="statSales">¥0</div><div class="stat-lbl">割引販売額</div></div>
+        <div class="stat-box"><div class="stat-val" id="statItems">0</div><div class="stat-lbl">販売個数</div></div>
+        <div class="stat-box"><div class="stat-val" id="statSaved">¥0</div><div class="stat-lbl">フードロス削減額</div></div>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--gray);margin-bottom:8px">商品別実績</div>
+      <div class="product-sales-list" id="productSalesList"><div class="empty-state" style="padding:10px">送信履歴がありません</div></div>
+    </div>
+    <div class="stats-card">
+      <div class="stats-title">📅 週別集計（火〜月）</div>
+      <div class="week-grid" id="weekGrid"></div>
+    </div>
+    <div style="font-size:13px;font-weight:700;color:var(--gray);margin-bottom:8px">送信履歴</div>
+    <div class="history-list" id="historyList"><div class="empty-state">送信履歴はありません 📭</div></div>
+  </div>
+</div>
+
+<!-- 商品追加モーダル -->
+<div class="modal-overlay" id="addProductModal">
+  <div class="modal">
+    <div class="modal-title">商品を追加</div>
+    <input type="text" class="modal-input" id="pName" placeholder="商品名（例：クロワッサン）">
+    <input type="number" class="modal-input" id="pStock" placeholder="在庫数">
+    <input type="number" class="modal-input" id="pPrice" placeholder="通常価格（円）">
+    <div class="modal-photo-btn" onclick="document.getElementById('pPhotoIn').click()">📷 商品写真を追加</div>
+    <input type="file" id="pPhotoIn" accept="image/*" style="display:none" onchange="setPPhoto(this)">
+    <img id="pPhotoPrev" class="modal-photo-prev">
+    <button class="modal-btn mbp" onclick="saveProduct()">追加する</button>
+    <button class="modal-btn mbs" onclick="closeModal('addProductModal')">キャンセル</button>
+  </div>
+</div>
+
+<div class="ov" id="sendingOv"><div class="spinner"></div><div class="ov-text">LINE送信中...</div></div>
+<div class="ov" id="successOv" onclick="this.classList.remove('show')"><div class="ov-icon">✅</div><div class="ov-text" id="successMsg">送信完了！</div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+// ===== Firebase設定（IIFEを廃止・グローバルスコープで定義） =====
+const firebaseConfig = {
+  apiKey: "AIzaSyBXTBHwmqfGOhAAAFH_-pcxhaXQ06ouuLA",
+  authDomain: "bakery-tm.firebaseapp.com",
+  projectId: "bakery-tm",
+  storageBucket: "bakery-tm.firebasestorage.app",
+  messagingSenderId: "652179507761",
+  appId: "1:652179507761:web:08c37b87b6b92712f2e310"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const DOC_ID = "bakery-tm";
+const COL = "data";
+
+// ===== STATE =====
+window.S = {products:[], history:[], lineUrl:'', discount:'', selected:[], ops:{start:'',end:'',weather:''}};
+
+function save(){
+  try{localStorage.setItem('bakeryTM2',JSON.stringify(S));}catch(e){}
+  clearTimeout(window._saveTimer);
+  window._saveTimer=setTimeout(()=>saveToCloud(S),1000);
+}
+function load(){try{const d=localStorage.getItem('bakeryTM2');if(d)S=JSON.parse(d);}catch(e){}}
+load();
+
+// ===== Firestore保存 =====
+async function saveToCloud(state){
+  try{
+    window._isSaving=true;
+    const cloudData={
+      products:state.products.map(p=>({id:p.id,name:p.name,stock:p.stock,price:p.price})),
+      lineUrl:state.lineUrl,
+      ops:state.ops,
+      history:state.history.slice(0,50).map(h=>({
+        date:h.date,hour:h.hour||0,discount:h.discount,
+        totalItems:h.totalItems||0,totalSales:h.totalSales||0,totalSaved:h.totalSaved||0,
+        message:h.message||'',weather:h.weather||'',
+        products:(h.products||[]).map(p=>({name:p.name})),
+        soldItems:(h.soldItems||[]).map(p=>({name:p.name,stock:p.stock,price:p.price,discounted:p.discounted}))
+      }))
+    };
+    await db.collection(COL).doc(DOC_ID).set(cloudData);
+    const badge=document.getElementById('syncBadge');
+    if(badge){badge.textContent='☁️ 同期済';badge.style.color='#16a34a';}
+    window._isSaving=false;
+  }catch(e){
+    console.error('クラウド保存失敗:',e);
+    window._isSaving=false;
+  }
+}
+
+// ===== Firestoreロード =====
+async function loadFromCloud(){
+  try{
+    const snap=await db.collection(COL).doc(DOC_ID).get();
+    if(snap.exists){
+      const cloudData=snap.data();
+      const localS=JSON.parse(localStorage.getItem('bakeryTM2')||'{}');
+      const localProds=localS.products||[];
+      S.products=(cloudData.products||[]).map(cp=>{
+        const lp=localProds.find(p=>p.id===cp.id||p.name===cp.name);
+        return{...cp,photo:lp?lp.photo:''};
+      });
+      S.lineUrl=cloudData.lineUrl||'';
+      S.ops=cloudData.ops||{start:'',end:'',weather:''};
+      S.history=cloudData.history||[];
+      save();
+      updateBadge();renderGrid();renderPE();renderHistory();updateSendBtnState();
+      if(S.lineUrl){
+        document.getElementById('lineUrlSetting').value=S.lineUrl;
+        buildQR(S.lineUrl);
+      }
+      return true;
+    }
+    return false;
+  }catch(e){console.error('クラウドロード失敗:',e);return false;}
+}
+
+// ===== リアルタイム同期 =====
+function startRealtimeSync(){
+  db.collection(COL).doc(DOC_ID).onSnapshot(snap=>{
+    if(snap.exists&&!window._isSaving){
+      const cloudData=snap.data();
+      const localS=JSON.parse(localStorage.getItem('bakeryTM2')||'{}');
+      const localProds=localS.products||[];
+      S.products=(cloudData.products||[]).map(cp=>{
+        const lp=localProds.find(p=>p.id===cp.id||p.name===cp.name);
+        return{...cp,photo:lp?lp.photo:''};
+      });
+      S.lineUrl=cloudData.lineUrl||'';
+      S.history=cloudData.history||[];
+      save();
+      updateBadge();
+      updateSendBtnState();
+      const activeTab=document.querySelector('.tab.active');
+      if(activeTab){
+        const tabId=activeTab.id.replace('tab-','');
+        if(tabId==='dm')renderGrid();
+        if(tabId==='products')renderPE();
+        if(tabId==='history')renderHistory();
+      }
+      const badge=document.getElementById('syncBadge');
+      if(badge){badge.textContent='☁️ 同期済';badge.style.color='#16a34a';}
+    }
+  });
+}
+
+// ===== Firebase初期化 =====
+async function initFirebase(){
+  try{
+    const badge=document.getElementById('syncBadge');
+    const loaded=await loadFromCloud();
+    if(loaded){
+      if(badge){badge.textContent='☁️ 同期済';badge.style.color='#16a34a';}
+    }else{
+      if(badge){badge.textContent='☁️ 未同期';badge.style.color='#999';}
+    }
+    startRealtimeSync();
+  }catch(e){
+    console.error('Firebase初期化失敗:',e);
+    const badge=document.getElementById('syncBadge');
+    if(badge){badge.textContent='☁️ オフライン';badge.style.color='#ef4444';}
+  }
+}
+
+// ===== TABS =====
+function showTab(t){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sec-'+t).classList.add('active');
+  document.getElementById('tab-'+t).classList.add('active');
+  if(t==='dm'){renderGrid();updatePricePreview();updateSendLbl();updateSendBtnState();}
+  if(t==='products')renderPE();
+  if(t==='member')initMember();
+  if(t==='history')renderHistory();
+}
+
+// ===== STOCK BADGE =====
+function updateBadge(){
+  document.getElementById('stockBadge').textContent='本日 '+(S.products.reduce((s,p)=>s+(parseInt(p.stock)||0),0))+'個残り';
+}
+updateBadge();
+
+// ===== DM作成 =====
+function renderGrid(){
+  const g=document.getElementById('dmGrid');
+  if(!S.products.length){g.innerHTML='<div class="empty-state" style="grid-column:1/-1">商品タブで商品を追加してください</div>';return;}
+  g.innerHTML=S.products.map((p,i)=>{
+    const sel=S.selected.includes(i);
+    return`<div class="pgi${sel?' sel':''}" onclick="toggleSel(${i})">
+      <div class="ck">${sel?'✓':''}</div>
+      <div class="pgi-img">${p.photo?`<img src="${p.photo}">`:'🍞'}</div>
+      <div class="pgi-name">${p.name}</div>
+      <div class="pgi-info">
+        <span class="pgi-stock">残り${p.stock||0}個</span>
+        <span class="pgi-price">${p.price?'¥'+p.price:''}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+function toggleSel(i){
+  const idx=S.selected.indexOf(i);
+  if(idx>=0)S.selected.splice(idx,1);else S.selected.push(i);
+  renderGrid();updatePricePreview();
+}
+function updatePricePreview(){
+  const pp=document.getElementById('pricePreview');
+  const list=document.getElementById('pricePreviewList');
+  const disc=parseInt(S.discount)||0;
+  const selProds=S.selected.map(i=>S.products[i]).filter(p=>p&&p.price);
+  if(!disc||!selProds.length){pp.style.display='none';return;}
+  pp.style.display='block';
+  list.innerHTML=selProds.map(p=>{
+    const orig=parseInt(p.price);
+    const after=Math.floor(orig*(100-disc)/100);
+    return`<div class="price-preview-row">
+      <span style="font-size:12px;flex:1">${p.name}</span>
+      <span class="price-original">¥${orig}</span>
+      <span class="price-arrow">→</span>
+      <span class="price-discounted">¥${after}</span>
+    </div>`;
+  }).join('');
+}
+function selDisc(btn,val){
+  document.querySelectorAll('.disc-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  S.discount=val;
+  updatePricePreview();
+}
+function updateSendLbl(){}
+function sendDM(){
+  if(isSentToday()){alert('本日はすでに値引き販売を開始済みです');return;}
+  if(!S.selected.length){alert('商品を選択してください');return;}
+  if(!S.discount){alert('割引率を選択してください');return;}
+  if(!S.lineUrl){alert('会員タブでLINE URLを設定してください');return;}
+  document.getElementById('sendingOv').classList.add('show');
+  setTimeout(()=>{
+    document.getElementById('sendingOv').classList.remove('show');
+    const msg=document.getElementById('dmMsg').value;
+    const selProds=S.selected.map(i=>S.products[i]);
+    const now=new Date();
+    const hour=now.getHours();
+    const soldItems=selProds.map(p=>({name:p.name,photo:p.photo,price:parseInt(p.price)||0,stock:parseInt(p.stock)||0,discounted:Math.floor((parseInt(p.price)||0)*(100-parseInt(S.discount))/100)}));
+    const totalItems=soldItems.reduce((s,p)=>s+p.stock,0);
+    const totalSales=soldItems.reduce((s,p)=>s+p.discounted*p.stock,0);
+    const totalSaved=soldItems.reduce((s,p)=>s+(p.price-p.discounted)*p.stock,0);
+    S.history.unshift({date:now.toLocaleString('ja-JP'),hour,discount:S.discount,products:selProds,soldItems,totalItems,totalSales,totalSaved,message:msg,weather:S.ops.weather||''});
+    S.selected=[];S.discount='';
+    document.getElementById('dmMsg').value='';
+    document.querySelectorAll('.disc-btn').forEach(b=>b.classList.remove('active'));
+    save();
+    window.open(S.lineUrl,'_blank');
+    document.getElementById('successMsg').textContent='LINE送信完了！フードロス削減に貢献しました 🌱';
+    document.getElementById('successOv').classList.add('show');
+    renderGrid();updatePricePreview();updateSendBtnState();
+  },1800);
+}
+
+// ===== 商品管理 =====
+let pPhotoData='';
+function setPPhoto(input){
+  const f=input.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{pPhotoData=e.target.result;const p=document.getElementById('pPhotoPrev');p.src=pPhotoData;p.style.display='block';};
+  r.readAsDataURL(f);
+}
+function openAddProduct(){
+  ['pName','pStock','pPrice'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('pPhotoPrev').style.display='none';pPhotoData='';
+  document.getElementById('addProductModal').classList.add('open');
+}
+function saveProduct(){
+  const name=document.getElementById('pName').value.trim();
+  if(!name){alert('商品名を入力');return;}
+  S.products.push({id:Date.now(),name,stock:document.getElementById('pStock').value,price:document.getElementById('pPrice').value,photo:pPhotoData});
+  save();renderPE();updateBadge();closeModal('addProductModal');
+}
+function renderPE(){
+  const list=document.getElementById('peList');
+  if(!S.products.length){list.innerHTML='<div class="empty-state">商品を追加してください</div>';return;}
+  list.innerHTML=S.products.map((p,i)=>`
+    <div class="pec">
+      <div class="pe-thumb" onclick="document.getElementById('pe_${i}').click()">${p.photo?`<img src="${p.photo}">`:'🍞'}</div>
+      <input type="file" id="pe_${i}" accept="image/*" style="display:none" onchange="applyPPhoto(${i},this)">
+      <div class="pe-body">
+        <div class="pe-name">${p.name}</div>
+        <div class="pe-inputs">
+          <input class="pe-input" type="number" value="${p.stock||''}" placeholder="在庫" onchange="S.products[${i}].stock=this.value;save();updateBadge();">
+          <input class="pe-input" type="number" value="${p.price||''}" placeholder="価格(¥)" onchange="S.products[${i}].price=this.value;save();">
+        </div>
+      </div>
+      <button class="pe-del" onclick="delProduct(${i})">🗑</button>
+    </div>`).join('');
+}
+function applyPPhoto(i,input){
+  const f=input.files[0];if(!f)return;
+  const r=new FileReader();r.onload=e=>{S.products[i].photo=e.target.result;save();renderPE();};r.readAsDataURL(f);
+}
+function delProduct(i){
+  S.products.splice(i,1);
+  S.selected=S.selected.filter(x=>x!==i).map(x=>x>i?x-1:x);
+  save();renderPE();updateBadge();
+}
+
+// ===== 会員タブ =====
+let qrObj=null;
+function initMember(){
+  const inp=document.getElementById('lineUrlSetting');
+  if(S.lineUrl){inp.value=S.lineUrl;buildQR(S.lineUrl);}
+}
+function applyLineUrl(){
+  const u=document.getElementById('lineUrlSetting').value.trim();
+  if(!u){alert('URLを入力してください');return;}
+  S.lineUrl=u;save();buildQR(u);alert('LINE URLを保存しました');
+}
+function buildQR(url){
+  const wrap=document.getElementById('qrWrap');
+  wrap.innerHTML='<div id="qrCanvas"></div>';
+  if(qrObj){try{qrObj.clear();qrObj=null;}catch(e){}}
+  try{
+    qrObj=new QRCode(document.getElementById('qrCanvas'),{
+      text:url,
+      width:200,
+      height:200,
+      colorDark:'#1a5c2e',
+      colorLight:'#ffffff',
+      correctLevel:QRCode.CorrectLevel.M
+    });
+  }catch(e){console.error('QR生成失敗:',e);}
+}
+
+// ===== 本日送信済みチェック =====
+function todayStr2(){return new Date().toLocaleDateString('ja-JP');}
+function isSentToday(){
+  const today=todayStr2();
+  return S.history.some(h=>h.date&&h.date.startsWith(today.replace(/\//g,'/')));
+}
+function updateSendBtnState(){
+  const btn=document.getElementById('btnSendDM');
+  if(!btn)return;
+  if(isSentToday()){
+    btn.style.opacity='.5';
+    btn.style.pointerEvents='none';
+    btn.innerHTML='✅ 本日送信済み <span id="sendLbl" style="font-size:12px;opacity:.9"></span>';
+  }else{
+    btn.style.opacity='1';
+    btn.style.pointerEvents='auto';
+    btn.innerHTML='▶ 開始（値引き販売をLINEで告知） <span id="sendLbl" style="font-size:12px;opacity:.9"></span>';
+  }
+}
+function setWeather(btn,w){
+  document.querySelectorAll('.weather-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');S.ops.weather=w;save();
+}
+
+// ===== 履歴レンダリング =====
+function todayStr(){return new Date().toLocaleDateString('ja-JP');}
+function renderHistory(){
+  updateSendBtnState();
+  if(S.ops.weather){document.querySelectorAll('.weather-btn').forEach(b=>{if(b.dataset.w===S.ops.weather)b.classList.add('active');});}
+  const today=todayStr();
+  const todayH=S.history.filter(h=>h.date&&h.date.startsWith(today.replace(/\//g,'/')));
+  const dayItems=todayH.reduce((s,h)=>s+(h.totalItems||0),0);
+  const daySales=todayH.reduce((s,h)=>s+(h.totalSales||0),0);
+  const daySaved=todayH.reduce((s,h)=>s+(h.totalSaved||0),0);
+  document.getElementById('statItems').textContent=dayItems;
+  document.getElementById('statSales').textContent='¥'+daySales.toLocaleString();
+  document.getElementById('statSaved').textContent='¥'+daySaved.toLocaleString();
+  const prodMap={};
+  todayH.forEach(h=>{
+    (h.soldItems||[]).forEach(p=>{
+      if(!prodMap[p.name])prodMap[p.name]={name:p.name,photo:p.photo,count:0,amount:0};
+      prodMap[p.name].count+=p.stock||0;
+      prodMap[p.name].amount+=(p.discounted||0)*(p.stock||0);
+    });
+  });
+  const psl=document.getElementById('productSalesList');
+  const prodArr=Object.values(prodMap).sort((a,b)=>b.amount-a.amount);
+  if(!prodArr.length){psl.innerHTML='<div class="empty-state" style="padding:10px">本日の送信履歴がありません</div>';}
+  else{psl.innerHTML=prodArr.map(p=>`
+    <div class="ps-row">
+      <div class="ps-thumb">${p.photo?`<img src="${p.photo}">`:'🍞'}</div>
+      <div class="ps-name">${p.name}</div>
+      <div class="ps-nums"><div class="ps-count">${p.count}個</div><div class="ps-amount">¥${p.amount.toLocaleString()}</div></div>
+    </div>`).join('');}
+  const weekG=document.getElementById('weekGrid');
+  const days=['日','月','火','水','木','金','土'];
+  const REST_DAYS=[1,4];
+  const candidates=[];
+  for(let i=13;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);if(!REST_DAYS.includes(d.getDay()))candidates.push(new Date(d));}
+  const target=candidates.slice(-7);
+  const ORDER=[2,3,5,6,0,1];
+  target.sort((a,b)=>ORDER.indexOf(a.getDay())-ORDER.indexOf(b.getDay()));
+  let maxWk=0;
+  const weekData=[];
+  for(const d of target){
+    const ds=d.toLocaleDateString('ja-JP').replace(/\//g,'/');
+    const dh=S.history.filter(h=>h.date&&h.date.startsWith(ds));
+    const amt=dh.reduce((s,h)=>s+(h.totalSales||0),0);
+    if(amt>maxWk)maxWk=amt;
+    weekData.push({label:days[d.getDay()],amount:amt,date:ds});
+  }
+  weekG.innerHTML=weekData.map(w=>`
+    <div class="week-day">
+      <div class="week-day-label">${w.label}</div>
+      <div class="week-bar-wrap"><div class="week-bar" style="height:${maxWk>0?(w.amount/maxWk*100):0}%"></div></div>
+      <div class="week-amount">${w.amount>0?'¥'+(w.amount/1000).toFixed(1)+'k':'-'}</div>
+    </div>`).join('');
+  const hl=document.getElementById('historyList');
+  if(!S.history.length){hl.innerHTML='<div class="empty-state">送信履歴はありません 📭</div>';return;}
+  hl.innerHTML=S.history.slice(0,20).map(h=>`
+    <div class="history-item">
+      <div class="hi-top">
+        <span class="hi-date">${h.date}${h.weather?'<span class="hi-weather">'+h.weather+'</span>':''}</span>
+        <span class="hi-badge">${h.discount}%OFF</span>
+      </div>
+      <div class="hi-thumbs">${(h.products||[]).map(p=>`<img class="hi-thumb" src="${p.photo||''}" onerror="this.style.display='none'">`).join('')}</div>
+      <div class="hi-info">個数:${h.totalItems||0} 売上:¥${(h.totalSales||0).toLocaleString()} 削減:¥${(h.totalSaved||0).toLocaleString()}${h.message?' | '+h.message:''}</div>
+    </div>`).join('');
+}
+
+// ===== CSV出力 =====
+function exportCSV(type){
+  let rows,filename;
+  if(type==='day'){
+    const today=todayStr();
+    const data=S.history.filter(h=>h.date&&h.date.startsWith(today.replace(/\//g,'/')));
+    if(!data.length){alert('本日のデータがありません（まだ開始ボタンが押されていません）');return;}
+    rows=[['フードロス削減レポート']];
+    rows.push(['日付',today]);
+    data.forEach(h=>{
+      rows.push(['LINE配信時刻',h.date]);
+      rows.push(['割引率',h.discount+'%']);
+    });
+    rows.push([]);
+    rows.push(['商品名','通常価格','値引後価格','数量','値引後売上','フードロス削減額']);
+    let sumQty=0,sumSales=0,sumSaved=0;
+    data.forEach(h=>(h.soldItems||[]).forEach(p=>{
+      const qty=p.stock||0;
+      const sales=(p.discounted||0)*qty;
+      const saved=((p.price||0)-(p.discounted||0))*qty;
+      sumQty+=qty;sumSales+=sales;sumSaved+=saved;
+      rows.push([p.name,p.price||0,p.discounted||0,qty,sales,saved]);
+    }));
+    rows.push(['合計','','',sumQty,sumSales,sumSaved]);
+    filename='foodloss_'+today.replace(/\//g,'')+'.csv';
+  }else{
+    if(!S.history.length){alert('履歴がありません');return;}
+    rows=[['日時','割引率','商品数','販売個数','売上','削減額','天気','メッセージ']];
+    for(let i=6;i>=0;i--){
+      const d=new Date();d.setDate(d.getDate()-i);
+      const ds=d.toLocaleDateString('ja-JP');
+      const dh=S.history.filter(h=>h.date&&h.date.startsWith(ds));
+      dh.forEach(h=>rows.push([h.date,h.discount+'%',(h.products||[]).length,h.totalItems||0,h.totalSales||0,h.totalSaved||0,h.weather||'',h.message||'']));
+    }
+    filename='TM_週間集計.csv';
+  }
+  const csv=rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));a.download=filename;a.click();
+}
+
+// ===== MODAL =====
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+
+// 初期化
+renderGrid();renderPE();renderHistory();updateSendLbl();updateSendBtnState();
+if(S.lineUrl)document.getElementById('lineUrlSetting').value=S.lineUrl;
+initFirebase();
+</script>
+</body>
+</html>
